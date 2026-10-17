@@ -25,11 +25,7 @@ Implementar un sistema IoT en el que un ESP32 lea la temperatura de un sensor DH
 ### 1. Conexión segura MQTT + TLS en el ESP32
 
 Se configuró el microcontrolador ESP32 en el entorno Wokwi para conectarse a la red WiFi simulada y entablar una comunicación cifrada vía TLS (puerto 8883) con el broker público `broker.hivemq.com`. Se realizó la sincronización horaria previa por NTP para validar de forma correcta el certificado de seguridad.
-
-> 📸 **[INSERTAR CAPTURA 1: CONEXIÓN MQTT Y TLS EN ESP32]**
->
-> * **Elemento a evidenciar:** Consola serie (Serial Monitor) de Wokwi.
-> * **Detalles visibles:** Obtención de dirección IP por DHCP, proceso de sincronización NTP de fecha/hora y mensaje de confirmación de conexión exitosa al broker en el puerto 8883 (`Conectado al Broker MQTT con TLS`).
+<img width="832" height="770" alt="image" src="https://github.com/user-attachments/assets/281d4caa-62a6-45cd-a48f-3884e192c99f" />
 
 ---
 
