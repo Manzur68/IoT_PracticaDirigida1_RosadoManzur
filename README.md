@@ -21,6 +21,170 @@ Implementar un sistema IoT en el que un ESP32 lea la temperatura de un sensor DH
 
 * Comando de control: ON / OFF
 
+## Preparación del entorno
+---
+### Paso 1: Configuración  en Wokwi
+
+Conecte los componentes de la siguiente manera: 
+* **DHT22 (Sensor de Temperatura/Humedad):**
+   * `VCC` $\rightarrow$ `3V3` del ESP32
+   * `SDA / DATA` $\rightarrow$ `GPIO 15` del ESP32
+   * `GND` $\rightarrow$ `GND` del ESP32
+   * **LED de Control:**
+     * **Ánodo** (Anode) $\rightarrow$ Resistencia de $220\,\Omega$ $\rightarrow$ `GPIO 2` del ESP32
+     * **Cátodo** (Cathode) $\rightarrow$ `GND` del ESP32
+El codigo en main.py:
+```python
+import network
+import time
+import ujson
+import dht
+from machine import Pin
+from umqtt.simple import MQTTClient
+
+DHT_PIN = 15
+LED_PIN = 2
+
+sensor = dht.DHT22(Pin(DHT_PIN))
+led = Pin(LED_PIN, Pin.OUT)
+led.value(0)
+
+BROKER = "broker.hivemq.com"
+PORT = 8883
+TOPIC_PUB = "casa/temperatura"
+TOPIC_SUB = "casa/led"
+CLIENT_ID = "ESP32_MicroPython_Wokwi"
+
+def conectar_wifi():
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    if not wlan.isconnected():
+        print("Conectando a WiFi Wokwi: ")
+        wlan.connect("Wokwi-GUEST", "")
+        while not wlan.isconnected():
+            time.sleep(0.5)
+            print(".", end="")
+    print("\nWiFi Conectado IP:", wlan.ifconfig()[0])
+
+def sub_cb(topic, msg):
+    t = topic.decode('utf-8')
+    m = msg.decode('utf-8')
+    print(f"\n[Mensaje recibido en {t}]: {m}")
+    
+    if t == TOPIC_SUB:
+        if m == "ON":
+            led.value(1)
+            print("-LED Encendido")
+        elif m == "OFF":
+            led.value(0)
+            print("-LED Apagado")
+conectar_wifi()
+print("Conectando al Broker MQTT con TLS:")
+client = MQTTClient(
+    client_id=CLIENT_ID,
+    server=BROKER,
+    port=PORT,
+    ssl=True,
+    ssl_params={'server_hostname': BROKER}
+)
+client.set_callback(sub_cb)
+client.connect()
+client.subscribe(TOPIC_SUB)
+print(f"Conectado Suscrito a '{TOPIC_SUB}'")
+
+last_pub = 0
+
+while True:
+    try:
+        client.check_msg()
+        if time.time() - last_pub >= 5:
+            last_pub = time.time()
+            sensor.measure()
+            t = sensor.temperature()
+            h = sensor.humidity()
+            data = {
+                "temp": t,
+                "hum": h
+            }
+            payload = ujson.dumps(data)
+            
+            print(f"Publicando en {TOPIC_PUB}: {payload}")
+            client.publish(TOPIC_PUB, payload)
+            
+    except Exception as e:
+        print("Error en el bucle principal:", e)
+        time.sleep(1)
+```
+
+---
+
+### Paso 2: Configuración del cliente en computadora local
+Se levanta el entorno `.venv` y se instala: 
+
+```bash
+pip install paho-mqtt
+```
+El codigo `cliente_desktop.py`:
+```python
+import ssl
+import json
+import time
+import paho.mqtt.client as mqtt
+
+BROKER = "broker.hivemq.com"
+PORT = 8883
+TOPIC_TEMP = "casa/temperatura"
+TOPIC_LED = "casa/led"
+
+def on_connect(client, userdata, flags, rc, properties=None):
+    if rc == 0:
+        print("\n[OK] Conectado exitosamente al Broker MQTT con TLS.")
+        client.subscribe(TOPIC_TEMP)
+        print(f"[OK] Suscrito a: {TOPIC_TEMP}\n")
+    else:
+        print(f"[ERROR] Codigo de conexion fallida: {rc}")
+
+def on_message(client, userdata, msg):
+    try:
+        payload = msg.payload.decode('utf-8')
+        data = json.loads(payload)
+        temp = data.get("temp")
+        hum = data.get("hum")
+        print(f"\n[DATO RECIBIDO] Temperatura: {temp} °C | Humedad: {hum} %")
+    except Exception:
+        print(f"\n[Mensaje Raw] {msg.topic}: {msg.payload.decode('utf-8')}")
+
+client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+client.on_connect = on_connect
+client.on_message = on_message
+
+client.tls_set(cert_reqs=ssl.CERT_NONE)
+client.tls_insecure_set(True)
+
+print("Conectando al Broker seguro:")
+client.connect(BROKER, PORT, 60)
+client.loop_start()
+
+try:
+    time.sleep(1)
+    print(" Control de LED ESP32")
+    while True:
+        cmd = input("Comando > ").strip().upper()
+        if cmd in ["ON", "OFF"]:
+            client.publish(TOPIC_LED, cmd)
+            print(f"-> Comando '{cmd}' enviado a '{TOPIC_LED}'")
+        elif cmd == "SALIR":
+            break
+        else:
+            print("Comando invalido. Usa 'ON' u 'OFF'")
+except KeyboardInterrupt:
+    pass
+finally:
+    client.loop_stop()
+    client.disconnect()
+    print("Cliente desconectado")
+```
+
 ## Ejecución 
 ### 1. Conexión segura MQTT + TLS en el ESP32
 
