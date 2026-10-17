@@ -22,8 +22,10 @@ Implementar un sistema IoT en el que un ESP32 lea la temperatura de un sensor DH
 * Comando de control: ON / OFF
 
 ## Preparación del entorno
----
+
 ### Paso 1: Configuración  en Wokwi
+
+https://wokwi.com/projects/478084860193021953 
 
 Conecte los componentes de la siguiente manera: 
 * **DHT22 (Sensor de Temperatura/Humedad):**
