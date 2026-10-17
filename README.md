@@ -27,7 +27,7 @@ Implementar un sistema IoT en el que un ESP32 lea la temperatura de un sensor DH
 Se configuró el microcontrolador ESP32 en el entorno Wokwi para conectarse a la red WiFi simulada y entablar una comunicación cifrada vía TLS (puerto 8883) con el broker público `broker.hivemq.com`. Se realizó la sincronización horaria previa por NTP para validar de forma correcta el certificado de seguridad.
 <img width="832" height="770" alt="image" src="https://github.com/user-attachments/assets/281d4caa-62a6-45cd-a48f-3884e192c99f" />
 
----
+
 
 ### 2. Publicación de datos de temperatura (JSON)
 
